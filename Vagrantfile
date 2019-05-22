@@ -1,31 +1,6 @@
-servers=[
-    {
-        :hostname => "master",
-        :ip => "10.69.0.2",
-        :box => "Dougs71/CentOS-7.6.1810-Minimal",
-        :memory => 2048,
-        :cpus => 2,
-        :role => "master"
-    },
-    {
-        :hostname => "node1",
-        :ip => "10.69.0.3",
-        :box => "Dougs71/CentOS-7.6.1810-Minimal",
-        :memory => 2048,
-        :cpus => 2,
-        :role => "node"
-    },
-    {
-        :hostname => "node2",
-        :ip => "10.69.0.4",
-        :box => "Dougs71/CentOS-7.6.1810-Minimal",
-        :memory => 2048,
-        :cpus => 2,
-        :role => "node",
-    }
-]
-
 Vagrant.configure("2") do |config|
+  NODES = 3
+
   config.vbguest.auto_update = false
   config.vm.box_check_update = false
   config.vm.box = "Dougs71/CentOS-7.6.1810-Minimal"
@@ -33,39 +8,29 @@ Vagrant.configure("2") do |config|
   config.ssh.insert_key = false
   config.ssh.private_key_path = ['provision/vagrant']
 
-  config.vm.define "control" do |control|
-    control.vm.hostname = "control"
+  config.vm.define "master" do |master|
+    master.vm.hostname = "master"
 
     config.vm.provider "virtualbox" do |vb|
-      vb.name = "control"
+      vb.name = "master"
       vb.memory = "512"
       vb.cpus = "1"
     end
 
-    control.vm.network "private_network", ip: "10.69.0.1"
-    control.vm.provision "shell", path: "provision/control.sh", privileged: false
+    master.vm.network "private_network", ip: "10.69.0.1"
   end
 
-  servers.each do |machine|
-    config.vm.define machine[:hostname] do |node|
-      node.vm.box = machine[:box]
-      node.vm.hostname = machine[:hostname]
-      node.vm.network "private_network", ip: machine[:ip]
+  (1..NODES).each do |node_id|
+    config.vm.define "node#{node_id}" do |node|
+      node.vm.box = "Dougs71/CentOS-7.6.1810-Minimal"
+      node.vm.hostname = "node#{node_id}"
+      node.vm.network "private_network", ip: "10.69.0.#{1+node_id}"
 
       node.vm.provider "virtualbox" do |vb|
-        vb.memory = machine[:memory]
-        vb.cpus = machine[:cpus]
-        vb.name = machine[:hostname]
-      end
-
-      case machine[:role]
-      when "master"
-        node.vm.provision "shell", path: "provision/master.sh", privileged: false
-      when "node"
-        node.vm.provision "shell", path: "provision/node.sh", privileged: false
+        vb.memory = "512"
+        vb.cpus = "1"
+        vb.name = "node#{node_id}"
       end
     end
   end
-
-  config.vm.provision "shell", path: "provision/common.sh", privileged: false
 end
